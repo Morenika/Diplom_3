@@ -61,6 +61,8 @@ def authorized_user(driver):
 
     login_response = api.login_user(email, password)
     assert login_response.status_code == 200
+
+    access_token = None
     access_token = login_response.json()["accessToken"]
 
     try:
@@ -76,15 +78,10 @@ def authorized_user(driver):
 
         main.go_to_profile_direct()
 
-
-        yield {
-            "email": email,
-            "password": password,
-            "access_token": access_token,
-        }
+        yield {"email": email, "password": password, "access_token": access_token}
     finally:
-      if access_token:
-        api.delete_user(access_token)
+        if access_token:
+            api.delete_user(access_token)
 
 
 @pytest.fixture

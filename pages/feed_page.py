@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import re
 import time
-
+import allure
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -55,17 +55,17 @@ class FeedPage(BasePage):
         d = FeedPage._digits(text)
         return int(d) if d else 0
 
+    @allure.step("Открыть ленту заказов")
     def open_feed(self):
         self.open(self.URL)
         self.find_visible(FeedPageLocators.ORDER_CARDS, timeout=30)
         return self
     
+    @allure.step("Проверить: открыта страница ленты заказов")
     def is_opened(self) -> bool:
-        if "/feed" not in self.driver.current_url:
-            return False
-        return self.is_visible(FeedPageLocators.ORDER_CARDS, timeout=10)
+        return self.url_contains("/feed") and self.is_visible(FeedPageLocators.ORDER_CARDS, timeout=10)
 
-
+    @allure.step("Открыть заказ в ленте по индексу: {index}")
     def click_order(self, index: int = 0):
         self.find_visible(FeedPageLocators.ORDER_CARDS, timeout=30)
 
@@ -82,13 +82,13 @@ class FeedPage(BasePage):
         self.scroll_into_view(order)
 
         try:
-            WebDriverWait(self.driver, 15).until(EC.element_to_be_clickable(order))
+            WebDriverWait(self.driver, 15).until(lambda d: order.is_displayed() and order.is_enabled())
             order.click()
         except Exception:
             self.js_click(order)
 
         def opened(d):
-            url_ok = bool(expected_url_part) and (expected_url_part in d.current_url)
+            url_ok = bool(expected_url_part) and EC.url_contains(expected_url_part)(d)
             modal_exists = (
                 len(d.find_elements(*FeedPageLocators.MODAL_CONTAINER)) > 0
                 or len(d.find_elements(*FeedPageLocators.MODAL_CONTENT)) > 0
@@ -98,24 +98,22 @@ class FeedPage(BasePage):
             return url_ok or modal_exists
 
         WebDriverWait(self.driver, 30).until(opened)
-        time.sleep(0.2)  
         return self
 
     # --------- assertions / checks ----------
+    @allure.step("Проверить: модалка деталей заказа открыта")
     def is_order_modal_opened(self) -> bool:
         if (
-            len(self.driver.find_elements(*FeedPageLocators.MODAL_CONTAINER)) > 0
-            or len(self.driver.find_elements(*FeedPageLocators.MODAL_CONTENT)) > 0
-            or len(self.driver.find_elements(*FeedPageLocators.MODAL_CLOSE)) > 0
-            or len(self.driver.find_elements(*FeedPageLocators.MODAL_ORDER_NUMBER)) > 0
+            self.driver.find_elements(*FeedPageLocators.MODAL_CONTAINER)
+            or self.driver.find_elements(*FeedPageLocators.MODAL_CONTENT)
+            or self.driver.find_elements(*FeedPageLocators.MODAL_CLOSE)
+            or self.driver.find_elements(*FeedPageLocators.MODAL_ORDER_NUMBER)
         ):
             return True
 
-        if re.search(r"/feed/\d+$", self.driver.current_url):
-            return True
+        return self.url_contains("/feed/")
 
-        return False
-
+    @allure.step("Закрыть модалку деталей заказа")
     def close_order_details_modal(self):
         if len(self.driver.find_elements(*FeedPageLocators.MODAL_CLOSE)) > 0:
             try:
@@ -125,20 +123,24 @@ class FeedPage(BasePage):
             self.wait_invisible(FeedPageLocators.MODAL_CONTAINER, timeout=10)
         return self
 
+    @allure.step("Получить номер заказа из модалки")
     def get_order_number_from_modal(self) -> str:
         el = self.find_visible(FeedPageLocators.MODAL_ORDER_NUMBER, timeout=10)
         return self._digits(el.text)
 
     # --------- counters ----------
+    @allure.step("Получить счётчик 'Выполнено за всё время'")
     def get_total_done_counter(self) -> int:
         el = self.find_visible(FeedPageLocators.TOTAL_DONE, timeout=30)
         return self._int(el.text)
 
+    @allure.step("Получить счётчик 'Выполнено за сегодня'")
     def get_today_done_counter(self) -> int:
         el = self.find_visible(FeedPageLocators.TODAY_DONE, timeout=30)
         return self._int(el.text)
 
     # --------- search ----------
+    @allure.step("Проверить: заказ пользователя {order_number} виден в ленте")
     def is_user_order_visible(self, order_number: str) -> bool:
         target = self._digits(order_number)
         if not target:
@@ -160,6 +162,7 @@ class FeedPage(BasePage):
 
         return False
 
+    @allure.step("Проверить: заказ {order_number} находится 'В работе' (timeout={timeout}с)")
     def is_order_in_progress(self, order_number: str, timeout: int = 90) -> bool:
         raw = self._digits(order_number)
         if not raw:

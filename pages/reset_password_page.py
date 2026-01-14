@@ -1,4 +1,7 @@
+# pages/reset_password_page.py
+import allure
 from selenium.webdriver.common.by import By
+
 from pages.base_page import BasePage
 
 
@@ -11,7 +14,6 @@ class ResetPasswordLocators:
         "|//input[contains(@class,'input__textfield')]",
     )
 
-    # Кнопка/иконка глаз
     VISIBILITY_BTN = (
         By.CSS_SELECTOR,
         "div.input_type_password button, div.input_type_password svg, .input__icon, button[type='button'] svg",
@@ -19,9 +21,12 @@ class ResetPasswordLocators:
 
 
 class ResetPasswordPage(BasePage):
-    def is_opened(self) -> bool:
-        return "reset-password" in self.driver.current_url
 
+    @allure.step("Проверить: открыта страница reset-password")
+    def is_opened(self) -> bool:
+        return self.url_contains("/reset-password", timeout=10)
+
+    @allure.step("Переключить видимость пароля (иконка глаза)")
     def toggle_password_visibility(self) -> None:
         overlay = (By.CSS_SELECTOR, "div[class*='Modal_modal_overlay']")
         if self.is_visible(overlay, timeout=1):
@@ -33,6 +38,7 @@ class ResetPasswordPage(BasePage):
             el = self.find_visible(ResetPasswordLocators.VISIBILITY_BTN, timeout=10)
             self.driver.execute_script("arguments[0].click();", el)
 
+    @allure.step("Проверить: поле пароля активно")
     def is_password_field_active(self) -> bool:
         inputs = self.driver.find_elements(*ResetPasswordLocators.PASSWORD_INPUT_ANY)
         if not inputs:

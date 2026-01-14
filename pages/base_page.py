@@ -1,5 +1,6 @@
 # pages/base_page.py
 from __future__ import annotations
+import allure
 
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.keys import Keys
@@ -87,3 +88,12 @@ class BasePage:
 
         if last_exc:
             raise last_exc
+        
+    @allure.step("Проверить, что URL содержит: {part}")
+    def url_contains(self, part: str, timeout: int = 10) -> bool:
+        try:
+            self.wait_url_contains(part, timeout)
+            return True
+        except TimeoutException:
+            return False
+
